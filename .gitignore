@@ -1,0 +1,36 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables (API keys)
+.env
+
+# Database (too large, regenerated automatically)
+data/database/careerpulse.db
+
+# Feature store (regenerated automatically)
+data/feature_store/
+
+# MLflow data
+data/mlflow/
+
+# Raw data
+data/raw/
+
+# Last updated file
+data/last_updated.txt
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini

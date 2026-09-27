@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: careerpulse_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    command: python -m serving.api
+    restart: unless-stopped
+
+  dashboard:
+    build: .
+    container_name: careerpulse_dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    command: python -m streamlit run serving/dashboard.py --server.port 8501 --server.address 0.0.0.0
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    container_name: careerpulse_scheduler
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    command: python -m scheduler.jobs
+    depends_on:
+      - api
+    restart: unless-stopped
