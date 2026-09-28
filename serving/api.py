@@ -4,6 +4,15 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+
+os.makedirs("data/database", exist_ok=True)
+os.makedirs("data/raw", exist_ok=True)
+os.makedirs("data/feature_store", exist_ok=True)
+os.makedirs("data/mlflow", exist_ok=True)
+
+from pipeline.ingestion import Base, engine
+Base.metadata.create_all(engine)
+
 from model.llm_coach import analyze_career, generate_cover_letter, get_interview_questions
 from model.resume_parser import parse_resume
 
@@ -19,6 +28,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    print("[INFO] API Starting up...")
+    print("[INFO] Database initialized")
 
 class CareerRequest(BaseModel):
     target_role: str
