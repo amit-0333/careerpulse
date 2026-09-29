@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from pipeline.ingestion import Job, engine
 import pickle
 
-API_URL = os.getenv("API_URL", "https://your-render-url.onrender.com")
+API_URL = os.getenv("http://localhost:8000", "https://your-render-url.onrender.com")
 
 st.set_page_config(
     page_title="CareerPulse",
