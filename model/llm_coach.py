@@ -50,6 +50,9 @@ def get_matching_jobs(skills, limit=10):
                 "required_skills": job_skills_list,
             })
         results = sorted(results, key=lambda x: x["match_pct"], reverse=True)
+        non_zero = [j for j in results if j["match_pct"] > 0]
+        if len(non_zero) >= 5:
+            return non_zero[:limit]
         return results[:limit]
 
 def ask_llm(prompt):
@@ -114,10 +117,12 @@ Please provide:
 1. READINESS ASSESSMENT
 Based on the real match scores above, how ready is this person?
 Use the actual percentages provided, do not invent new ones.
+If all scores are 0% say the user needs to add more relevant skills.
 
 2. APPLY NOW
 List top 3 jobs with highest real match % from the data above.
 Show their exact match % as calculated.
+If all are 0% suggest what skills to add to get matches.
 
 3. NOT READY YET
 List 2-3 jobs with low match % and explain exactly which skills are missing.
