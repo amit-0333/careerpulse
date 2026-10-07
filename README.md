@@ -1,353 +1,241 @@
-# CareerPulse 🎯
+# CareerPulse - AI Powered Career Assistant
 
-An AI-powered career assistant that matches your skills to real job openings, identifies skill gaps, and provides personalized career guidance using machine learning and LLMs.
+<!-- Add your banner image here -->
+<!-- ![CareerPulse Banner](demo/banner.png) -->
 
-## What It Does
+## What is CareerPulse?
 
-- Fetches live job data from RemoteOK, Arbeitnow, The Muse, and Adzuna
-- Parses resumes in PDF format and extracts relevant skills
-- Calculates job match percentage based on skills and job requirements
-- Identifies missing skills and skill gaps
-- Uses Groq LLM for personalized career coaching
-- Generates personalized cover letters
-- Generates interview preparation questions
-- Continuously updates the ML model as new job data arrives
-- Tracks experiments and model performance using MLflow
-- Detects data drift and supports model retraining
-- Provides REST APIs using FastAPI
-- Provides an interactive dashboard using Streamlit
-- Automates data ingestion and model updates using APScheduler
+CareerPulse is a production-grade MLOps system that acts as your personal AI career coach. It fetches live job data daily from multiple APIs, calculates real skill match percentages between your profile and job requirements, and uses an LLM to provide personalized career guidance.
+
+<!-- Add dashboard screenshot here -->
+<!-- ![Dashboard](demo/dashboard.png) -->
+
+---
+
+## The Problem it Solves
+
+Most job search tools show you jobs without telling you:
+- How well you actually match the requirements
+- Which specific skills you are missing
+- What to learn to become a better candidate
+- Which jobs you can realistically apply for right now
+
+CareerPulse solves all of this with real data, not guesses.
+
+---
+
+## Key Features
+
+- **Live Job Data** - Fetches fresh jobs daily from 4 APIs covering remote, hybrid, onsite, full-time, contract roles
+- **Real Match Scoring** - Calculates actual skill match percentage using set intersection algorithm, not AI estimates
+- **AI Career Coach** - LLM receives real scores and provides personalized readiness assessment, apply-now list, and skill gap analysis
+- **Resume Parser** - Upload your PDF resume and skills are extracted automatically
+- **90-Day Roadmap** - Personalized week-by-week learning plan based on your actual gaps
+- **Cover Letter Generator** - AI writes a tailored cover letter for any job
+- **Interview Prep** - Get likely interview questions for any role
+- **Online Learning** - ML model continuously retrains as new jobs arrive
+- **Drift Detection** - Automatically detects when job market changes and triggers retraining
+- **Experiment Tracking** - Every model training run logged with MLflow
+
+---
+
+## How it Works
+
+```
+You upload resume
+        |
+        v
+Skills extracted from PDF using NLP
+        |
+        v
+Real match % calculated against every job in database
+(set intersection of your skills vs job requirements)
+        |
+        v
+LLM receives REAL scores (not hallucinated)
+        |
+        v
+Personalized analysis:
+  - Readiness % based on real data
+  - Jobs to apply for NOW with exact match %
+  - Jobs not ready for yet with exact missing skills
+  - Skill gaps detected by algorithm
+  - 90 day learning roadmap
+  - Cover letter generation
+  - Interview questions
+```
+
+---
 
 ## Tech Stack
 
-| Component | Technology |
-|---|---|
-| Programming Language | Python |
-| Data Pipeline | Python, SQLAlchemy, SQLite |
-| Data Processing | Pandas, NumPy |
+| Category | Technology |
+|----------|-----------|
+| Language | Python 3.13 |
+| Database | SQLite + SQLAlchemy |
 | NLP | spaCy, NLTK, TF-IDF |
-| Machine Learning | River, MultinomialNB |
-| LLM | Groq API |
-| LLM Model | `openai/gpt-oss-20b` |
+| Online Learning | River (MultinomialNB) |
+| LLM | Groq API (free) |
 | Experiment Tracking | MLflow |
+| Drift Detection | Custom pipeline |
 | API | FastAPI |
 | Dashboard | Streamlit |
-| Database | SQLite |
 | Scheduler | APScheduler |
 | Containerization | Docker |
-| Job APIs | RemoteOK, Arbeitnow, The Muse, Adzuna |
+| Deployment | Render.com |
+
+---
 
 ## Project Structure
 
-```text
+```
 careerpulse/
-│
 ├── pipeline/
-│   ├── __init__.py
-│   ├── ingestion.py
-│   ├── preprocessing.py
-│   └── features.py
-│
+│   ├── ingestion.py       # Fetches jobs from 4 APIs
+│   ├── preprocessing.py   # Cleans and filters tech jobs
+│   ├── features.py        # TF-IDF and skill feature engineering
+│   └── skills.py          # Master skills list (200+ skills)
 ├── model/
-│   ├── __init__.py
-│   ├── online_learner.py
-│   ├── resume_parser.py
-│   └── llm_coach.py
-│
+│   ├── online_learner.py  # River incremental learning model
+│   ├── llm_coach.py       # Groq LLM career coaching
+│   └── resume_parser.py   # PDF resume skill extraction
 ├── mlops/
-│   ├── __init__.py
-│   ├── mlflow_tracking.py
-│   └── drift_detection.py
-│
+│   ├── tracking.py        # MLflow experiment tracking
+│   └── drift.py           # Data drift detection
 ├── serving/
-│   ├── __init__.py
-│   ├── api.py
-│   └── dashboard.py
-│
+│   ├── api.py             # FastAPI REST API
+│   └── dashboard.py       # Streamlit dashboard
 ├── scheduler/
-│   ├── __init__.py
-│   └── scheduler.py
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── careerpulse.db
-│
-├── experiments/
-│   └── mlruns/
-│
-├── tests/
-│   ├── test_pipeline.py
-│   ├── test_model.py
-│   └── test_api.py
-│
-├── .env
-├── .gitignore
-├── requirements.txt
+│   └── jobs.py            # APScheduler automation
 ├── Dockerfile
 ├── docker-compose.yml
-└── README.md
+└── requirements.txt
 ```
 
-## System Architecture
+---
 
-```text
-                    ┌─────────────────────┐
-                    │      Job APIs       │
-                    │                     │
-                    │     RemoteOK        │
-                    │     Arbeitnow       │
-                    │     The Muse        │
-                    │     Adzuna          │
-                    └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │    Data Pipeline    │
-                    │                     │
-                    │    Ingestion        │
-                    │    Preprocessing    │
-                    │    Feature Eng.     │
-                    └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │   SQLite Database   │
-                    └──────────┬──────────┘
-                               │
-                ┌──────────────┴──────────────┐
-                │                             │
-                ▼                             ▼
-      ┌─────────────────┐           ┌─────────────────┐
-      │  Online ML      │           │  Resume Parser  │
-      │     Model       │           │                 │
-      │                 │           │  PDF → Skills   │
-      │  River          │           │  NLP            │
-      │  MultinomialNB  │           │                 │
-      └────────┬────────┘           └────────┬────────┘
-               │                             │
-               └──────────────┬──────────────┘
-                              │
-                              ▼
-                    ┌─────────────────────┐
-                    │   Career Matching   │
-                    │                     │
-                    │   Match %           │
-                    │   Skill Gaps        │
-                    │   Recommendations   │
-                    └──────────┬──────────┘
-                               │
-                 ┌─────────────┴─────────────┐
-                 │                           │
-                 ▼                           ▼
-       ┌─────────────────┐         ┌─────────────────┐
-       │    FastAPI      │         │    Streamlit    │
-       │      API        │         │    Dashboard    │
-       └────────┬────────┘         └────────┬────────┘
-                │                           │
-                └─────────────┬─────────────┘
-                              │
-                              ▼
-                    ┌─────────────────────┐
-                    │        User         │
-                    │                     │
-                    │  Job Matching       │
-                    │  Resume Analysis    │
-                    │  Career Coaching    │
-                    │  Cover Letters      │
-                    │  Interview Prep     │
-                    └─────────────────────┘
-```
+## Dashboard Pages
+
+<!-- Add screenshots for each page -->
+
+### Resume Analyzer
+Upload your PDF resume or enter skills manually. Get real match percentages against live job database plus full AI career analysis.
+<!-- ![Resume Analyzer](demo/resume_analyzer.png) -->
+
+### Job Browser
+Browse all jobs with filters for job type, location search, and skill search. Direct apply links to company career portals.
+<!-- ![Job Browser](demo/job_browser.png) -->
+
+### Cover Letter Generator
+Select any job, enter your skills, get a tailored professional cover letter in seconds. Download as text file.
+<!-- ![Cover Letter](demo/cover_letter.png) -->
+
+### Interview Prep
+Get 8 likely interview questions (technical, behavioral, system design) with tips on how to answer each one.
+<!-- ![Interview Prep](demo/interview_prep.png) -->
+
+---
+
+## System Stats (Live)
+
+The sidebar shows real-time system metrics:
+- Total jobs in database
+- Remote jobs available
+- Most in-demand skill
+- Model accuracy (improves daily)
+- Last data update timestamp
+
+---
 
 ## MLOps Pipeline
 
-```text
-New Jobs
-   │
-   ▼
-Data Ingestion
-   │
-   ▼
-Preprocessing
-   │
-   ▼
-Feature Engineering
-   │
-   ▼
-Online Learning
-   │
-   ▼
-Model Evaluation
-   │
-   ├──────────────► MLflow Tracking
-   │
-   ▼
-Drift Detection
-   │
-   ├── No Drift ─────────► Continue Monitoring
-   │
-   └── Drift Detected ──► Retrain Model
+```
+Daily at 6AM (automated):
+  1. Fetch new jobs from 4 APIs
+  2. Filter and clean data
+  3. Build features
+  4. Retrain online learning model
+  5. Log run to MLflow
+  6. Check for data drift
+  7. Auto-retrain if drift detected
 ```
 
-## How to Run
+---
 
-### 1. Clone the Repository
+## How to Run Locally
 
 ```bash
+# Clone repo
 git clone https://github.com/amit-0333/careerpulse.git
 cd careerpulse
-```
 
-### 2. Create a Virtual Environment
-
-```bash
+# Create virtual environment
 python -m venv venv
-```
-
-Activate the environment on Windows:
-
-```bash
 venv\Scripts\activate
-```
 
-### 3. Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 4. Configure Environment Variables
+# Add API keys to .env file
+# GROQ_API_KEY=your_key
+# MUSE_API_KEY=your_key
 
-Create a `.env` file in the project root:
-
-```env
-GROQ_API_KEY=your_groq_api_key
-ADZUNA_APP_ID=your_adzuna_app_id
-ADZUNA_APP_KEY=your_adzuna_app_key
-```
-
-### 5. Run the Data Pipeline
-
-Run job ingestion:
-
-```bash
+# Run data pipeline
 python -m pipeline.ingestion
-```
-
-Run preprocessing:
-
-```bash
 python -m pipeline.preprocessing
-```
-
-Run feature engineering:
-
-```bash
 python -m pipeline.features
-```
-
-### 6. Run the Machine Learning Model
-
-```bash
 python -m model.online_learner
-```
 
-### 7. Start the FastAPI Server
-
-```bash
+# Start API (Terminal 1)
 python -m serving.api
-```
 
-API:
-
-```text
-http://localhost:8000
-```
-
-### 8. Start the Streamlit Dashboard
-
-```bash
+# Start Dashboard (Terminal 2)
 python -m streamlit run serving/dashboard.py
 ```
 
-Dashboard:
+Open http://localhost:8501 in browser.
 
-```text
-http://localhost:8501
-```
+---
 
-## Docker
+## API Endpoints
 
-Build and start the application:
+| Method | Endpoint | Description |
+|--------|---------|-------------|
+| GET | / | API info |
+| GET | /health | Health check |
+| GET | /stats | Database stats |
+| GET | /jobs | Browse jobs |
+| POST | /analyze | Analyze skills against jobs |
+| POST | /upload-resume | Upload PDF and analyze |
+| POST | /cover-letter | Generate cover letter |
+| POST | /interview-prep | Get interview questions |
 
-```bash
-docker-compose up --build
-```
+API Docs: http://localhost:8000/docs
 
-Stop the containers:
+---
 
-```bash
-docker-compose down
-```
+## Demo
 
-## Core Features
+<!-- Add your demo video/GIF here -->
+<!-- ![Demo GIF](demo/careerpulse_demo.gif) -->
+<!-- [Watch Full Demo Video](demo/careerpulse_demo.mp4) -->
 
-### Job Matching
+---
 
-CareerPulse compares user skills with job requirements and calculates a job match percentage.
+## Live Deployment
 
-### Resume Analysis
+- API: https://careerpulse-api.onrender.com
+- Dashboard: Coming soon on Streamlit Cloud
 
-Users can upload a PDF resume. The system extracts relevant information and skills using NLP techniques.
+---
 
-### Skill Gap Detection
+## Author
 
-The system identifies skills required by a job that are missing from the user's profile.
+**Amit Kumar**
+- GitHub: [@amit-0333](https://github.com/amit-0333)
 
-### AI Career Coach
+---
 
-The Groq LLM provides personalized career guidance based on the user's resume, skills, target role, and selected job.
+## License
 
-### Cover Letter Generation
-
-CareerPulse generates job-specific cover letters based on the candidate's profile and job requirements.
-
-### Interview Preparation
-
-The system generates technical and behavioral interview questions based on the selected role and job requirements.
-
-### Online Learning
-
-The ML model continuously learns from newly ingested job data using River's online learning framework.
-
-### MLOps
-
-MLflow tracks experiments and model performance, while the drift detection pipeline monitors changes in incoming job data.
-
-## Data Sources
-
-CareerPulse currently integrates with:
-
-- RemoteOK
-- Arbeitnow
-- The Muse
-- Adzuna
-
-The ingestion pipeline normalizes job information from these sources into a common structure before storing it in the database.
-
-## Future Improvements
-
-- Personalized job recommendations
-- Additional job-board integrations
-- Semantic job matching using embeddings
-- User authentication and profiles
-- Job application tracking
-- Email notifications for relevant jobs
-- Automated resume improvement suggestions
-- Advanced model monitoring
-- Cloud deployment
-- Production database integration
-
-## Live Demo
-
-Coming soon after cloud deployment.
+MIT License
