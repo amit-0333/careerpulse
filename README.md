@@ -224,8 +224,8 @@ API Docs: http://localhost:8000/docs
 
 ## Live Deployment
 
-- API: https://careerpulse-api.onrender.com
-- Dashboard: Coming soon on Streamlit Cloud
+- API: Coming soon
+- Dashboard: Coming soon 
 
 ---
 
