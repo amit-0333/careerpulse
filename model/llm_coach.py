@@ -3,6 +3,10 @@ import requests
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from pipeline.ingestion import Job, engine
+from pipeline.skills import SKILLS_LIST
+from pipeline.skill_matching import (
+    normalize_skills, split_required_nice, calculate_match,
+)
 
 load_dotenv()
 
@@ -25,8 +29,16 @@ def calculate_match(user_skills_list, job_skills_list):
     match_pct = round((len(matched) / len(job_set)) * 100)
     return match_pct, list(matched), list(missing)
 
+_KNOWN_SKILLS = set(SKILLS_LIST)
+
+def extract_required_skills(job_tags):
+    """Job skills only. Ignores non-skill tags like 'sales' or 'it jobs'."""
+    return [s for s in normalize_skills((job_tags or "").split(","))
+            if s in _KNOWN_SKILLS]
+
 def get_matching_jobs(skills, limit=10):
-    user_skills_list = [s.strip().lower() for s in skills.split(",") if s.strip()]
+    user_skills_list = normalize_skills(skills.split(","))
+    user_set = set(user_skills_list)
     with Session(engine) as session:
         jobs = session.query(Job).all()
         results = []
@@ -34,8 +46,9 @@ def get_matching_jobs(skills, limit=10):
             job_skills_list = extract_required_skills(job.tags)
             if not job_skills_list:
                 continue
+            required, nice = split_required_nice(job.description, job_skills_list)
             match_pct, matched_skills, missing_skills = calculate_match(
-                user_skills_list, job_skills_list
+                user_skills_list, required
             )
             results.append({
                 "title": job.title,
@@ -47,9 +60,15 @@ def get_matching_jobs(skills, limit=10):
                 "match_pct": match_pct,
                 "matched_skills": matched_skills,
                 "missing_skills": missing_skills,
-                "required_skills": job_skills_list,
+                "required_skills": required,
+                "nice_skills": nice,
+                "nice_matched": [s for s in nice if s in user_set],
             })
-        results = sorted(results, key=lambda x: x["match_pct"], reverse=True)
+            results = sorted(
+            results,
+            key=lambda x: (x["match_pct"], len(x["matched_skills"])),
+            reverse=True,
+        )
         non_zero = [j for j in results if j["match_pct"] > 0]
         if len(non_zero) >= 5:
             return non_zero[:limit]
