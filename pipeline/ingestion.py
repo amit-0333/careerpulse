@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Float, DateTime, Integer, Text
 from sqlalchemy.orm import declarative_base, Session
+from pipeline.dedup import dedup_key
 
 load_dotenv()
 
@@ -51,13 +52,21 @@ def save_jobs(jobs):
     saved = 0
     skipped = 0
     with Session(engine) as session:
+        seen_keys = {
+            dedup_key(c, t, loc)
+            for c, t, loc in session.query(Job.company, Job.title, Job.location).all()
+        }
+        seen_keys.discard(None)
         for job in jobs:
             existing = session.query(Job).filter_by(job_id=job["job_id"]).first()
-            if not existing:
-                session.add(Job(**job))
-                saved += 1
-            else:
+            key = dedup_key(job.get("company"), job.get("title"), job.get("location"))
+            if existing or (key is not None and key in seen_keys):
                 skipped += 1
+                continue
+            session.add(Job(**job))
+            if key is not None:
+                seen_keys.add(key)
+            saved += 1
         session.commit()
     print(f"[DB] Saved: {saved} new jobs | Skipped: {skipped} duplicates")
 
