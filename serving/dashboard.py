@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from pipeline.ingestion import Job, engine
 import pickle
+from pipeline.location import location_matches
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
@@ -160,9 +161,9 @@ elif page == "Job Browser":
         )
     with col2:
         location_search = st.text_input(
-            "Search by Location",
-            placeholder="e.g. India, London, Berlin"
-        )
+        "Search by Location",
+        placeholder="e.g. India, London, Berlin")
+        include_remote = st.checkbox("Include worldwide-remote jobs", value=True)
     with col3:
         skill_search = st.text_input("Search by Skill", placeholder="e.g. python")
     with col4:
@@ -173,8 +174,7 @@ elif page == "Job Browser":
         query = session.query(Job)
         if job_type_filter != "All":
             query = query.filter_by(job_type=job_type_filter)
-        if location_search:
-            query = query.filter(Job.location.contains(location_search))
+
         if skill_search:
             search_term = skill_search.lower()
             query = query.filter(
@@ -182,7 +182,13 @@ elif page == "Job Browser":
                 Job.title.contains(search_term) |
                 Job.description.contains(search_term)
             )
-        jobs = query.limit(limit).all()
+        jobs = query.all()
+        if location_search:
+            jobs = [
+                j for j in jobs
+                if location_matches(j.location, location_search, j.job_type, include_remote)
+            ]
+        jobs = jobs[:limit]
 
     st.write(f"[INFO] Showing {len(jobs)} jobs")
     for job in jobs:

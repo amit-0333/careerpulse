@@ -4,7 +4,7 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
-
+from pipeline.location import location_matches
 os.makedirs("data/database", exist_ok=True)
 os.makedirs("data/raw", exist_ok=True)
 os.makedirs("data/feature_store", exist_ok=True)
@@ -141,14 +141,20 @@ def interview_prep(request: InterviewRequest):
     }
 
 @app.get("/jobs")
-def get_jobs(limit: int = 10, source: str = None):
+def get_jobs(limit: int = 10, source: str = None, location: str = None, include_remote: bool = True):
     from sqlalchemy.orm import Session
     from pipeline.ingestion import Job, engine
     with Session(engine) as session:
         query = session.query(Job)
         if source:
             query = query.filter_by(source=source)
-        jobs = query.limit(limit).all()
+        jobs = query.all()
+        if location:
+            jobs = [
+                j for j in jobs
+                if location_matches(j.location, location, j.job_type, include_remote)
+            ]
+        jobs = jobs[:limit]
         return {
             "status": "success",
             "total": len(jobs),
