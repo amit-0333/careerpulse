@@ -144,14 +144,30 @@ Keep response practical and use only the real data provided above.
 
 def generate_cover_letter(job_title, company, user_skills, experience_years):
     prompt = f"""
-Write a professional cover letter for:
-- Job: {job_title} at {company}
-- My Skills: {user_skills}
-- My Experience: {experience_years} years
+Write a cover letter for the job below, using ONLY the facts I give you.
 
-Keep it concise, professional, and under 250 words.
-Do not use generic phrases like I am writing to express my interest.
-Make it specific and impactful.
+FACTS (the only things you may state as true):
+- Job title: {job_title}
+- Company name: {company}
+- My skills: {user_skills}
+- My years of professional experience: {experience_years}
+
+RULES:
+1. Mention only the skills listed above. Do not add any other skill or tool.
+2. State the years of experience exactly as given. Do not round it up or call it "extensive".
+3. Do NOT invent anything: no past employers, projects, achievements,
+   numbers, percentages, metrics, team sizes, awards or degrees.
+4. If a detail would make the letter stronger but is not in the facts,
+   write a clear placeholder in square brackets instead, for example:
+   [add one project where you used Python] or [add a result you achieved, with a real number].
+   Include 2 or 3 such placeholders.
+5. You know nothing about {company} except its name. Do not describe its
+   products, mission, culture, news or technology. Where you would say why
+   you like the company, write [add why you want to join {company}].
+6. Write in first person, in a plain and honest tone, under 250 words.
+7. Do not start with "I am writing to express my interest".
+8. Do not use the words "led", "reduced", "improved", "increased", "migrated"
+   or "scaled" unless they describe something in the facts above.
 """
     print("[INFO] Generating cover letter...")
     return ask_llm(prompt)

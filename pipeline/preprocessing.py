@@ -2,7 +2,7 @@ import re
 from sqlalchemy.orm import Session
 from pipeline.ingestion import Job, engine
 from pipeline.skills import SKILLS_LIST
-
+from pipeline.skill_extractor import extract_skills
 
 TECH_JOB_KEYWORDS = [
     # Core tech roles
@@ -74,16 +74,6 @@ def remove_html(text):
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-def extract_skills(text):
-    if not text:
-        return ""
-    text_lower = text.lower()
-    found_skills = []
-    for skill in SKILLS_LIST:
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        if re.search(pattern, text_lower):
-            found_skills.append(skill)
-    return ", ".join(found_skills)
 
 def is_tech_job(title):
     title_lower = title.lower()

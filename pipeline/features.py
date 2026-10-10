@@ -50,12 +50,14 @@ def build_text_features(df):
 
 def build_skill_features(df):
     print("[INFO] Building skill features...")
+    tag_sets = df["tags"].str.lower().apply(
+        lambda x: {t.strip() for t in str(x).split(",")}
+    )
     skill_cols = {}
     for skill in SKILLS_LIST:
         clean_skill = skill.replace(" ", "_").replace("/", "_")
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        skill_cols[f"skill_{clean_skill}"] = df["tags"].str.lower().apply(
-            lambda x: 1 if re.search(pattern, str(x)) else 0
+        skill_cols[f"skill_{clean_skill}"] = tag_sets.apply(
+            lambda s, sk=skill: 1 if sk in s else 0
         )
     skill_df = pd.DataFrame(skill_cols, index=df.index)
     df = pd.concat([df, skill_df], axis=1)

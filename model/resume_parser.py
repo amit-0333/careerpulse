@@ -3,6 +3,7 @@ import re
 import pymupdf as fitz
 from dotenv import load_dotenv
 from pipeline.skills import SKILLS_LIST
+from pipeline.skill_extractor import extract_skills_list as extract_skills
 
 load_dotenv()
 
@@ -33,14 +34,6 @@ def extract_text_from_pdf(pdf_path):
     print(f"[SUCCESS] Extracted {len(text)} characters from PDF")
     return text
 
-def extract_skills(text):
-    text_lower = text.lower()
-    found_skills = []
-    for skill in SKILLS_LIST:
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        if re.search(pattern, text_lower):
-            found_skills.append(skill)
-    return found_skills
 
 def extract_experience(text):
     text_lower = text.lower()
