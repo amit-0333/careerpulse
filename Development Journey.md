@@ -1,294 +1,268 @@
 # CareerPulse - Development Journey
 
-## Phase-wise Development Log
+A log of what I built, what broke, and what I learned. Phases 1-14 are the original build. Phases 15-23 are an audit I did in October 2026, where I tested my own claims and fixed what did not hold up. Where a later phase proved an earlier statement wrong, the earlier phase carries a **Correction** note instead of being quietly rewritten.
 
 ---
 
+# Part 1 - Original build
+
 ## Phase 1 - Data Ingestion Pipeline
 
-### What I Built
-Connected 4 free job APIs: RemoteOK, Arbeitnow, The Muse, and Adzuna. Built a pipeline that fetches live job data and stores it in a SQLite database with duplicate detection.
+**Built:** Connected 4 free job APIs (RemoteOK, Arbeitnow, The Muse, Adzuna) and stored jobs in SQLite with duplicate detection.
 
-### Problem Faced
-Adzuna API was returning empty responses when API keys were missing, causing a JSON decode error and crashing the entire pipeline.
+**Problem:** Adzuna returned empty responses when API keys were missing, causing a JSON decode error that crashed the pipeline.
 
-### How I Fixed It
-Added try/except error handling around every API call with status code checking. If any API fails, it logs a warning and continues with the other APIs instead of crashing.
+**Fix:** try/except and status-code checks around every API call. A failing API logs a warning and the others continue.
 
-### Result
-1141 jobs fetched successfully from 3 APIs even when one fails.
+**Result:** 1,141 jobs fetched from 3 APIs even when one failed.
+
+**Correction (Phase 18):** duplicate detection only compared `job_id`, so the same job from two sources was never caught.
 
 ---
 
 ## Phase 2 - Data Cleaning and NLP
 
-### What I Built
-A preprocessing pipeline that filters non-tech jobs, removes HTML from descriptions, extracts skills using regex with word boundary matching, and standardizes job types.
+**Built:** Preprocessing that filters non-tech jobs, strips HTML, extracts skills with regex word boundaries, and standardizes job types.
 
-### Problem Faced
-The initial filter was too loose — jobs like "Office Maid", "Police Officer", and "Store Manager" were passing through because their descriptions mentioned technical words.
+**Problem 1:** The filter was too loose. "Office Maid" and "Police Officer" passed because descriptions mentioned technical words.
+**Fix:** Filter on the title only, using a strict list of tech keywords.
 
-### How I Fixed It
-Changed from description-based filtering to title-only filtering with a strict list of tech job keywords. This reduced false positives significantly.
+**Problem 2:** The extractor matched "r" inside words like "water".
+**Fix:** `\b` word boundaries so "r" only matches as a standalone word.
 
-### Second Problem
-The skill extractor was matching "r" inside words like "water" and "developer", causing false skill detections.
+**Result:** 399 tech jobs kept from 1,141.
 
-### How I Fixed It
-Replaced simple string contains with regex word boundary matching `\b` so "r" only matches as a standalone word.
-
-### Result
-399 clean tech jobs kept from 1141 total. Zero false skill detections.
+**Correction (Phase 16):** "Zero false skill detections" was wrong. `\b` still matched the English word "go" and "R" in "R&D", and it could never match `C++` or `C#`.
 
 ---
 
 ## Phase 3 - Feature Engineering
 
-### What I Built
-TF-IDF vectorization of job text (500 features), binary skill features for 213 skills, salary normalization using MinMaxScaler, and job type one-hot encoding.
+**Built:** TF-IDF (500 features), binary skill columns for 213 skills, salary scaling with MinMaxScaler, job-type one-hot encoding.
 
-### Problem Faced
-Performance warning: DataFrame was highly fragmented because skill features were being added one column at a time using insert.
+**Problem:** Pandas "DataFrame is highly fragmented" warning from adding columns one at a time.
+**Fix:** Build all columns at once with `pd.concat(axis=1)`.
 
-### How I Fixed It
-Changed to batch column creation using pd.concat(axis=1) instead of inserting one column at a time.
-
-### Result
-230 total features built for 399 jobs. Feature store saved successfully.
+**Result:** 230 features for 399 jobs.
 
 ---
 
 ## Phase 4 - Online Learning Model
 
-### What I Built
-River-based online learning model using BagOfWords + MultinomialNB pipeline. Model trains on each job one by one and updates itself incrementally.
+**Built:** River `BagOfWords + MultinomialNB`, trained one job at a time.
 
-### Problem Faced
-Tried switching to Hoeffding Tree for better accuracy but accuracy dropped from 59% to 35% because Hoeffding Tree needs much more data to work well.
+**Problem 1:** Hoeffding Tree dropped accuracy from 59% to 35% on this small dataset.
+**Fix:** Went back to MultinomialNB.
 
-### How I Fixed It
-Reverted to MultinomialNB which works well with small datasets. Accuracy recovered to 54-59%.
+**Problem 2:** "other_tech" was over 40% of the data.
+**What I said then:** "More data will fix it and accuracy will improve automatically."
 
-### Second Problem
-Too many jobs categorized as "other_tech" (40%+ of dataset) causing class imbalance and lower accuracy.
-
-### How I Fixed It
-This is a data volume problem not a code problem. More daily data ingestion will naturally reduce the other_tech percentage and improve accuracy over time through online learning.
-
-### Result
-Model trained at 47-59% accuracy depending on dataset size. Improves automatically as more jobs are ingested daily.
+**Correction (Phase 20):** I never measured that. The later evaluation showed the labels come from title keywords and the model gains little from more data.
 
 ---
 
 ## Phase 5 - MLflow Experiment Tracking
 
-### What I Built
-MLflow experiment tracking using SQLite backend. Every training run logs: accuracy, total jobs, category distribution, training date, model type.
+**Built:** MLflow with a SQLite backend. Each run logs accuracy, job count, category distribution and date.
 
-### Problem Faced
-MLflow UI was broken on Windows with Python 3.13 due to uvicorn socket error [WinError 10022].
+**Problem 1:** MLflow UI crashed on Windows + Python 3.13 (`WinError 10022`).
+**Fix:** Skipped the local UI. The tracking database still stores every run.
 
-### How I Fixed It
-Skipped local MLflow UI. The tracking database still works perfectly and stores all run history. UI works correctly when deployed to cloud.
+**Problem 2:** The file-store backend is deprecated.
+**Fix:** Switched to `sqlite:///data/mlflow/mlflow.db`.
 
-### Second Problem
-MLflow file store was deprecated. Got error about filesystem tracking backend being in maintenance mode.
-
-### How I Fixed It
-Switched from file store to SQLite backend: `sqlite:///data/mlflow/mlflow.db`
-
-### Result
-5+ experiment runs tracked with full history of accuracy, jobs trained, and timestamps.
+**Result:** 8 runs recorded at my last check in October 2026.
 
 ---
 
 ## Phase 6 - Drift Detection
 
-### What I Built
-Custom drift detection that checks schema drift, distribution drift (job type and source percentages), and volume drift. Auto triggers retraining when drift is detected.
+**Built:** Checks for schema drift, distribution drift (job type and source shares) and volume drift. Triggers retraining on drift.
 
-### Problem Faced
-First run showed 74% volume drift because reference data had 168 jobs but current had 293.
+**Problem:** First run reported 74% volume drift (168 reference jobs vs 293 current).
+**What I said then:** "Correct behavior, not a bug."
 
-### How I Fixed It
-This was correct behavior not a bug. Drift detection was working exactly as designed - it detected that 125 new jobs were added and triggered retraining recommendation.
-
-### Result
-Drift detection correctly identifies when job market distribution changes and model needs updating.
+**Correction (Phase 23):** The saved report on 1,559 jobs showed `volume_drift: True` while `distribution_drift: False`. Volume drift fires just because jobs were added, and the reference data is never refreshed, so it fires on every run. This is a known weakness.
 
 ---
 
 ## Phase 7 - LLM Integration
 
-### What I Built
-Groq API integration using free tier (openai/gpt-oss-20b model). Career coach that analyzes user profile against job database.
+**Built:** Groq (`openai/gpt-oss-20b`) career coach.
 
-### Critical Problem Faced
-LLM was hallucinating match percentages. It said "Senior ML Engineer at Voleon: 75% match" but this number was invented by the LLM, not calculated from actual data.
+**Problem 1 (critical):** The LLM invented match percentages ("75% match" was not calculated).
+**Fix:** The code calculates the match % and the LLM only explains the real numbers.
 
-### How I Fixed It
-Changed the flow completely:
-1. Calculate REAL match % using set intersection of user skills and job required skills
-2. Send those REAL scores to LLM with explicit instruction: "Do NOT change or estimate these percentages"
-3. LLM now explains the real scores instead of inventing new ones
+**Problem 2:** A variable named `matched` was used for two things, so `get_matching_jobs` returned `None`.
+**Fix:** Renamed the list to `results`.
 
-### Second Problem
-Variable name conflict in get_matching_jobs function. The variable `matched` was used for both the jobs results list and the skill intersection result, causing the function to return None.
-
-### How I Fixed It
-Renamed the jobs results list from `matched` to `results` to avoid the conflict.
-
-### Result
-Real match percentages now show correctly: 100% for exact matches, 67% for one missing skill, 50% for two missing skills etc.
+**Result:** Real percentages (100%, 67%, 50% ...).
 
 ---
 
 ## Phase 8 - Resume Parser
 
-### What I Built
-PDF resume parser using PyMuPDF that extracts text, finds skills using regex matching, detects experience years, and extracts name, email, phone.
+**Built:** PyMuPDF parser for text, skills, experience years, name, email, phone.
 
-### Problem Faced
-`import fitz` showed deprecation warning saying to use `import pymupdf` instead.
+**Problem:** `import fitz` gave a deprecation warning.
+**Fix:** `import pymupdf as fitz`.
 
-### How I Fixed It
-Changed to `import pymupdf as fitz` to use the new API while keeping existing code working.
-
-### Result
-Resume parser correctly extracts skills from PDF and feeds them into the career analysis pipeline.
+**Note (Phase 23):** when no experience is found the parser returns 1 year, which is a guess.
 
 ---
 
 ## Phase 9 - FastAPI
 
-### What I Built
-REST API with endpoints for career analysis, resume upload, cover letter generation, interview prep, job browsing, and system stats.
+**Built:** Endpoints for analysis, resume upload, cover letter, interview prep, jobs and stats.
 
-### Problem Faced
-The 0% match issue surfaced here. All jobs were returning 0% match because of the variable name conflict bug (see Phase 7).
-
-### How I Fixed It
-Fixed the variable name conflict in get_matching_jobs (renamed matched to results).
-
-### Result
-All API endpoints working correctly. Swagger docs auto-generated at /docs.
+**Problem:** Every job showed 0% match. Cause: the Phase 7 variable bug.
+**Result:** All endpoints work; Swagger docs at `/docs`.
 
 ---
 
 ## Phase 10 - Streamlit Dashboard
 
-### What I Built
-4-page dashboard: Resume Analyzer, Job Browser, Cover Letter Generator, Interview Prep. Live system stats in sidebar showing total jobs, remote jobs, top skill, model accuracy, last updated date.
+**Built:** 4 pages (Resume Analyzer, Job Browser, Cover Letter, Interview Prep) and a stats sidebar.
 
-### Problem Faced
-HTML tags like `<br>` were showing as raw text in the LLM analysis output.
-
-### How I Fixed It
-Created a clean_html() function that replaces `<br>`, `<br/>`, and `<br />` with newline characters before rendering with st.markdown().
-
-### Second Problem
-Job Browser was showing 0 results when searching "data science" because skills stored in tags are individual words not phrases.
-
-### How I Fixed It
-Changed search to look in title, description, AND tags instead of only tags.
-
-### Third Problem
-Job type dropdown had options like hybrid, part_time, contract, internship that had 0 jobs in database.
-
-### How I Fixed It
-Queried actual job types from database and updated dropdown to match real values: remote, onsite, full_time, external, unknown.
-
-### Fourth Problem
-Last Updated date in sidebar was stale showing old date even after new ingestion.
-
-### How I Fixed It
-Added update_last_updated() function in ingestion.py that writes current timestamp to data/last_updated.txt after every successful ingestion. Dashboard reads from this file.
-
-### Result
-Full dashboard working with all 4 pages functional and accurate system stats.
+**Problems and fixes:**
+- Raw `<br>` tags in LLM output -> `clean_html()` before `st.markdown()`.
+- Job Browser found nothing for "data science" -> search title, description and tags.
+- Job-type dropdown listed types with 0 jobs -> use the types that exist in the database.
+- Stale "Last Updated" -> ingestion writes `data/last_updated.txt`.
 
 ---
 
 ## Phase 11 - Scheduler
 
-### What I Built
-APScheduler with two scheduled jobs: full pipeline at 6AM daily and data ingestion every 6 hours.
+**Built:** APScheduler: full pipeline daily at 06:00, ingestion every 6 hours.
 
-### Problem Faced
-No issues. Scheduler worked correctly on first attempt.
-
-### Result
-Scheduler starts and waits for scheduled times. Runs automatically when deployed to cloud.
+**Note:** It only runs while its process is running. I have not run it continuously.
 
 ---
 
 ## Phase 12 - Docker
 
-### What I Built
-Dockerfile, docker-compose.yml for 3 services (API, Dashboard, Scheduler), and .dockerignore.
+**Built:** `Dockerfile`, `docker-compose.yml` (API, dashboard, scheduler), `.dockerignore`.
 
-### Decision Made
-Decided not to test Docker locally because:
-1. Still in development phase with frequent code changes
-2. Render.com reads Dockerfile from GitHub automatically
-3. No need to build locally if deploying to cloud
-
-### Result
-Docker files created and ready for cloud deployment.
+**Decision:** I did not test Docker locally. **Status: still untested.**
 
 ---
 
 ## Phase 13 - GitHub
 
-### What I Built
-Git repository with proper .gitignore excluding venv, database, feature store, API keys, and logs.
+**Built:** Repository with a `.gitignore`.
 
-### Problem Faced
-Push rejected because README was created on GitHub but not locally, causing merge conflict.
-
-### How I Fixed It
-Ran `git pull origin main --allow-unrelated-histories` to merge the remote README, then pushed successfully.
-
-### Result
-All code pushed to https://github.com/amit-0333/careerpulse
+**Problem:** Push rejected because a README existed only on GitHub.
+**Fix:** `git pull origin main --allow-unrelated-histories`, then push.
 
 ---
 
-## Phase 14 - Cloud Deployment
+## Phase 14 - Cloud Deployment (historical)
 
-### What I Built
-FastAPI deployed on Render.com free tier.
+**Built:** FastAPI on Render free tier.
 
-### Problem Faced 1
-Build failed with error: `No matching distribution found for pywin32==312`
+**Problems:** `pywin32` (Windows-only) in `requirements.txt` broke the Linux build; `unable to open database file` fixed with `os.makedirs()` and `create_all()`; free-tier cold starts of 30-60 seconds.
 
-### How I Fixed It
-pywin32 is a Windows-only library that got included in requirements.txt when pip freeze was run on Windows. Removed it from requirements.txt since Render runs on Linux.
+**Decision:** Demo locally; keep the Render URL for reference.
 
-### Problem Faced 2
-After build succeeded, got database error: `unable to open database file`
+**Status:** needs checking. I have not re-verified that the Render deployment is still live, and the Streamlit dashboard is not deployed. SQLite on Render's free tier is ephemeral, so data would reset on restart.
 
-### How I Fixed It
-Added os.makedirs() calls at the top of api.py to create all required directories on startup, and added Base.metadata.create_all(engine) to initialize the database schema.
+---
 
-### Problem Faced 3
-Render free tier has cold start - sleeps after 15 minutes of inactivity, takes 30-60 seconds to wake up.
+# Part 2 - Audit and fixes (October 2026)
 
-### Decision Made
-For portfolio demo purposes, running locally is more reliable. Render URL kept for resume/LinkedIn but local demo used for interviews.
+Method: for each issue I first confirmed it in the code or data, then made the smallest change, then tested it. Numbers below were measured, not estimated.
 
-### Result
-API deployed on Render. Dashboard ready for Streamlit Cloud deployment.
+## Phase 15 - Cover letter hallucination
+
+**Problem:** With only "python" and 1 year entered, the letter invented results ("reduced latency by 35%", "led a migration").
+**Cause:** The prompt asked for something "specific and impactful" and never limited the LLM to the user's facts.
+**Fix:** Rewrote the prompt: use only the given skills and years, no invented employers, numbers or results, no claims about the company, and `[placeholders]` where details are missing.
+**Test:** A script runs real Groq calls and flags percentages, "10k"-style numbers, achievement verbs and fake employers. The Backend Developer case I reviewed returned 3 placeholders and no flags. LLM output varies between runs, so this is a check, not a guarantee.
+
+## Phase 16 - Skill extraction
+
+**Problem:** "Go" was the top skill.
+**Cause:** `\bgo\b` matches the English word "go". `\b` also matched "R" in "R&D", and `C++` / `C#` could never match because `\b` does not work after a symbol.
+**Fix:** One shared extractor (`skill_extractor.py`) replacing three copied versions. Ambiguous skills (go, r, ray, node, agents) need context, such as "Golang" or "Experience in Go".
+**Result (number of jobs mentioning each skill, measured on the 1,559 jobs in the database at that time):**
+
+| Skill | Before | After |
+|---|---|---|
+| go | 76 | 60 (spot-checked samples were real `golang` tags) |
+| r | 42 | 2 |
+| c++ | 0 | 40 |
+| c# | 0 | 18 |
+
+Python became the top skill. Limitation: a bare lowercase `go` tag cannot be told apart from the word, so it is ignored.
+
+## Phase 17 - Skill matching
+
+**Problem:** Matching was an exact set intersection, so "JS" did not match "javascript". Raw tags like "sales" and "it jobs" also polluted the skill field.
+**Fix:** A synonym map (JS, sklearn, postgres, ML, k8s ...), a required vs nice-to-have split based on wording in the description, and non-skill tags ignored. The match % is still calculated in code.
+**Result:** In my test, 55 of 216 Python jobs had a clear required/nice split. The rest had no such wording, so every skill counts as required. Ties are now ranked by the number of matched skills, because "100%" from 1 of 1 skills is a weak signal.
+
+## Phase 18 - Duplicate jobs
+
+**Problem:** The Job Browser showed "Artefact" and "Artefactlinkedin" as two jobs.
+**Cause:** Dedup only checked `job_id`.
+**Fix:** A duplicate key of normalized company + title + city (removes legal suffixes, "linkedin", "(m/f/d)", accents). `save_jobs` checks it, and a one-time cleanup script (dry run first) removed old duplicates.
+**Result:** 24 duplicate groups, 30 rows removed, 819 -> 789 jobs.
+**Found, not fixed:** 30 descriptions have broken characters (23 RemoteOK, 7 Arbeitnow). The damage is already stored.
+
+## Phase 19 - Location filter
+
+**Problem:** Searching "USA" returned Swiss jobs.
+**Cause:** The filter was a substring match and SQLite ignores case, so "Lausanne" contains "usa".
+**Fix:** Whole-word matching plus a country and city lookup (so "Germany" finds Berlin and München), US state codes, and a checkbox for worldwide-remote jobs. The API `/jobs` endpoint has the same filter.
+**Limits:** The city list is hand-made. About 22 small-town jobs stayed unresolved, 54 jobs have no location and never match a place search.
+
+## Phase 20 - Honest model evaluation
+
+**Problem:** The sidebar showed 68.2% accuracy with no baseline.
+**Finding:** On the old 1,559-job data, always guessing "other_tech" scored 70.8%, so the model was below the baseline. The data later changed (non-tech jobs removed), so I re-measured with 5 stratified train/test splits on 789 jobs:
+
+| Input | Accuracy | Majority baseline | Macro F1 |
+|---|---|---|---|
+| Title + tags + description[:200] | 59.7% (+/- 3.3) | 47.5% | 0.417 |
+| Title hidden | 51.9% (+/- 4.4) | 47.5% | 0.297 |
+
+`qa_testing` had 0% recall.
+**Conclusion:** The model beats the baseline but is weak. Category labels are made from title keywords, so a plain rule does the job better. I describe it as a demonstration of online learning, tracking and retraining, not a production classifier. The sidebar now shows held-out accuracy and the gap to the baseline.
+
+## Phase 21 - Tests and CI
+
+**Built:** 67 pytest tests (skill extractor edge cases, match %, dedup, location) and a GitHub Actions workflow. Both runs passed.
+**Also fixed:** `requirements.txt` was saved as UTF-16 (a PowerShell side effect), which breaks installs on Linux and in CI. I converted it to UTF-8. Database backup files had been committed by accident, so `.gitignore` now ignores `data/database/*.db`.
+**Not covered:** the resume parser and the LLM calls have no tests.
+
+## Phase 22 - Documentation
+
+Rewrote the README, Run Guide, Project architecture and this file. Removed claims I could not back up: "production-grade", "4 working APIs", "improves daily", spaCy and NLTK as extraction tools, and invented clock times. Added cross-platform commands, screenshots and a Limitations section.
+
+## Phase 23 - Open problems
+
+Found during the audit, **not fixed yet**:
+
+- **The Muse returns HTTP 403** (13 Oct 2026), so only 3 sources work.
+- **Ingestion re-adds non-tech jobs** that preprocessing deleted: one run saved 1,041 of 1,192 fetched jobs.
+- **Drift detection** flags volume changes and the reference data is never refreshed, so it can retrain on every run. The scheduler also trains and then retrains after a drift flag.
+- **Resume upload** builds a temp file path from the uploaded filename without checking it, and has no size or type limit.
+- **Resume parser** defaults to 1 year of experience when none is found.
+- **90-day roadmap** is free text from the LLM and renders unevenly.
+- **Docker and deployment** are untested.
 
 ---
 
 ## Key Lessons Learned
 
-1. Always use word boundary regex `\b` for skill matching to avoid false matches
-2. Never let LLM generate data that should come from algorithms (match percentages)
-3. Variable naming conflicts are silent bugs - use descriptive names
-4. Online learning accuracy depends heavily on dataset size and class balance
-5. pip freeze on Windows includes Windows-only packages that break Linux deployments
-6. Free tier cloud services have cold start delays - warn users or use local demo
-7. Database files should never be in .gitignore and should be initialized on startup for cloud
-8. MLflow file store is deprecated - always use database backend
+1. `\b` is not enough for skill matching. Short or ambiguous words (go, r) need context, and symbols (`C++`) need their own rules.
+2. Never let an LLM produce numbers that code can calculate, and tell it to use only the facts you give it.
+3. Variable-name conflicts are silent bugs.
+4. A model's accuracy means nothing without a baseline. Always compare with "always guess the biggest class".
+5. Check where labels come from. If the labels come from the input, the model is relearning a rule.
+6. Do not write "improves over time" until you have measured it.
+7. `pip freeze` on Windows includes Windows-only packages, and PowerShell can save files as UTF-16.
+8. Free cloud tiers sleep and often have temporary disks, so SQLite data can disappear.
+9. MLflow's file store is deprecated; use a database backend.
+10. Test with real data. Most bugs in this audit (go, C++, "usa" in "Lausanne") only showed up on real jobs.
