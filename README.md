@@ -54,7 +54,7 @@ Your skills / resume -> normalize -> match % (code) -> LLM explains the result
 
 ## Data sources
 
-RemoteOK, Arbeitnow and Adzuna work. The Muse integration exists in the code but currently returns HTTP 403, so it adds no jobs.
+RemoteOK, Arbeitnow, Adzuna and The Muse. The Muse covers all industries, so most of its jobs are removed by the tech-title filter (19 of 100 fetched were kept on 13 Oct 2026). It needs a `User-Agent` header, otherwise it returns HTTP 403.
 
 ## Setup
 
@@ -159,7 +159,7 @@ Reproduce: `python -m mlops.evaluation`
 - **Required vs nice-to-have** is only detected when the posting uses clear wording; otherwise every skill counts as required.
 - **Location filter** uses a built-in list of countries and cities. Unknown places match only by exact text. Jobs with no location never match a place search.
 - **Data:** about 4% of descriptions had broken characters from a source encoding issue. Non-tech jobs may be re-added by ingestion and removed again by preprocessing.
-- **The Muse** source is disabled (HTTP 403).
+- **The Muse** adds few tech jobs, and only the first 5 pages (100 jobs) are fetched.
 - **90-day roadmap** is free text from the LLM, so formatting can be uneven.
 - Planned: structured roadmap output, drift tests, Docker deployment with persistent storage.
 

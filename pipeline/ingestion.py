@@ -150,7 +150,7 @@ def fetch_themuse():
     for page in range(1, 6):
         try:
             url = f"https://www.themuse.com/api/public/jobs?page={page}"
-            response = requests.get(url)
+            response = requests.get(url, headers={"User-Agent": "careerpulse-app"})
             if response.status_code != 200:
                 print(f"[WARNING] The Muse page {page} failed: {response.status_code}")
                 continue

@@ -14,7 +14,7 @@ The match % is never produced by the LLM.
 ## Architecture
 
 ```
-RemoteOK + Arbeitnow + Adzuna   (The Muse: code exists, returns HTTP 403)
+RemoteOK + Arbeitnow + Adzuna   RemoteOK + Arbeitnow + Adzuna + The Muse
         |
         v
 pipeline/ingestion.py  ->  dedup (company + title + city)  ->  SQLite
@@ -133,5 +133,5 @@ Resume PDF or typed skills
 
 - Drift can fire just because the job count changed.
 - The category model is weak and its labels come from title keywords (see README, Model evaluation).
-- The Muse source returns 403.
+- The Muse adds few tech jobs (19 of 100 fetched were kept on 13 Oct 2026).
 - Not deployed.

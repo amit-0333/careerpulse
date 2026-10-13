@@ -82,7 +82,7 @@ Backup `.db` files are ignored by git.
 
 | Command | What it does |
 |---|---|
-| `pipeline.ingestion` | Fetches jobs from RemoteOK, Arbeitnow and Adzuna and skips duplicates (The Muse currently returns 403) |
+| `pipeline.ingestion` | Fetches jobs from RemoteOK, Arbeitnow, Adzuna and The Muse and skips duplicates |
 | `pipeline.preprocessing` | Removes non-tech jobs, cleans text, extracts skills |
 | `pipeline.features` | Builds TF-IDF and skill feature files |
 | `model.online_learner` | Trains the River category model |

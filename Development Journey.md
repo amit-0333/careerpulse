@@ -246,7 +246,7 @@ Rewrote the README, Run Guide, Project architecture and this file. Removed claim
 
 Found during the audit, **not fixed yet**:
 
-- **The Muse returns HTTP 403** (13 Oct 2026), so only 3 sources work.
+- ~~The Muse returned HTTP 403~~ **Fixed (13 Oct 2026):** the API rejects Python's default user agent. Sending a `User-Agent` header fixed it. It adds few tech jobs: 19 of 100 fetched were kept after preprocessing.
 - **Ingestion re-adds non-tech jobs** that preprocessing deleted: one run saved 1,041 of 1,192 fetched jobs.
 - **Drift detection** flags volume changes and the reference data is never refreshed, so it can retrain on every run. The scheduler also trains and then retrains after a drift flag.
 - **Resume upload** builds a temp file path from the uploaded filename without checking it, and has no size or type limit.
