@@ -230,6 +230,8 @@ Python became the top skill. Limitation: a bare lowercase `go` tag cannot be tol
 `qa_testing` had 0% recall.
 **Conclusion:** The model beats the baseline but is weak. Category labels are made from title keywords, so a plain rule does the job better. I describe it as a demonstration of online learning, tracking and retraining, not a production classifier. The sidebar now shows held-out accuracy and the gap to the baseline.
 
+**Follow-up with 1,086 jobs:** 59.6% (+/- 2.2) vs a 47.7% baseline, macro F1 0.39, title hidden 52.2%. Adding about 300 jobs changed nothing measurable (59.7% before), and the running accuracy during training flattens at roughly 55% after about 800 jobs.
+
 ## Phase 21 - Tests and CI
 
 **Built:** 67 pytest tests (skill extractor edge cases, match %, dedup, location) and a GitHub Actions workflow. Both runs passed.

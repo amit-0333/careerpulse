@@ -137,7 +137,8 @@ careerpulse/
 
 The River model predicts a job's category (software engineering, data science, ...).
 
-- On held-out jobs it scored about **60% accuracy against a 47.5% majority-class baseline** (789 jobs, 5 random splits, 13 Oct 2026).
+- With the job title hidden, it only slightly beats the baseline (52.2% vs 47.7%).
+- Going from 789 to 1,086 jobs did not change held-out accuracy (59.7% to 59.6%), so I do not claim it improves with more data. Running accuracy during training rises until about 800 jobs and then flattens.
 - Small classes are weak: `qa_testing` had 0% recall.
 - With the job title hidden, it only slightly beats the baseline.
 - Category labels come from title keywords, so a plain rule does this task better. The model is here to show online learning, MLflow tracking and retraining, **not** as a production classifier.
