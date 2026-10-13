@@ -1,241 +1,171 @@
-# CareerPulse - AI Powered Career Assistant
+# CareerPulse - AI Career Assistant
 
-<!-- Add your banner image here -->
-<!-- ![CareerPulse Banner](demo/banner.png) -->
+[![tests](https://github.com/amit-0333/careerpulse/actions/workflows/tests.yml/badge.svg)](https://github.com/amit-0333/careerpulse/actions/workflows/tests.yml)
 
-## What is CareerPulse?
+CareerPulse fetches live tech job postings, extracts the skills each job asks for, and compares them with **your** skills. The match percentage is calculated by code, never guessed by an LLM. An LLM (Groq) then turns those real numbers into career advice, a cover letter and interview questions.
 
-CareerPulse is a production-grade MLOps system that acts as your personal AI career coach. It fetches live job data daily from multiple APIs, calculates real skill match percentages between your profile and job requirements, and uses an LLM to provide personalized career guidance.
+![Resume Analyzer](demo/resume_analyzer.png)
 
-<!-- Add dashboard screenshot here -->
-<!-- ![Dashboard](demo/dashboard.png) -->
+## What it does
 
----
+- **Job data pipeline** - fetches jobs from public APIs, cleans them, removes duplicates, keeps tech roles
+- **Skill extraction** - 213 skills, matched with context rules so "go" the verb is not "Go" the language, and `C++` / `C#` work
+- **Match scoring** - normalizes synonyms (`JS` = javascript, `sklearn` = scikit-learn, `ML` = machine learning), separates required vs nice-to-have skills when the posting says so, and computes the match % in code
+- **AI career coach** - the LLM gets the real scores and explains gaps; it does not calculate them
+- **Cover letter** - uses only the skills and years you enter; missing details become `[placeholders]`
+- **Resume parser** - upload a PDF and skills are extracted automatically
+- **Interview prep** and a **90-day roadmap**
+- **MLOps parts** - River online-learning classifier, MLflow run tracking, drift check, APScheduler jobs
 
-## The Problem it Solves
-
-Most job search tools show you jobs without telling you:
-- How well you actually match the requirements
-- Which specific skills you are missing
-- What to learn to become a better candidate
-- Which jobs you can realistically apply for right now
-
-CareerPulse solves all of this with real data, not guesses.
-
----
-
-## Key Features
-
-- **Live Job Data** - Fetches fresh jobs daily from 4 APIs covering remote, hybrid, onsite, full-time, contract roles
-- **Real Match Scoring** - Calculates actual skill match percentage using set intersection algorithm, not AI estimates
-- **AI Career Coach** - LLM receives real scores and provides personalized readiness assessment, apply-now list, and skill gap analysis
-- **Resume Parser** - Upload your PDF resume and skills are extracted automatically
-- **90-Day Roadmap** - Personalized week-by-week learning plan based on your actual gaps
-- **Cover Letter Generator** - AI writes a tailored cover letter for any job
-- **Interview Prep** - Get likely interview questions for any role
-- **Online Learning** - ML model continuously retrains as new jobs arrive
-- **Drift Detection** - Automatically detects when job market changes and triggers retraining
-- **Experiment Tracking** - Every model training run logged with MLflow
-
----
-
-## How it Works
-
-```
-You upload resume
-        |
-        v
-Skills extracted from PDF using NLP
-        |
-        v
-Real match % calculated against every job in database
-(set intersection of your skills vs job requirements)
-        |
-        v
-LLM receives REAL scores (not hallucinated)
-        |
-        v
-Personalized analysis:
-  - Readiness % based on real data
-  - Jobs to apply for NOW with exact match %
-  - Jobs not ready for yet with exact missing skills
-  - Skill gaps detected by algorithm
-  - 90 day learning roadmap
-  - Cover letter generation
-  - Interview questions
-```
-
----
-
-## Tech Stack
-
-| Category | Technology |
-|----------|-----------|
-| Language | Python 3.13 |
-| Database | SQLite + SQLAlchemy |
-| NLP | spaCy, NLTK, TF-IDF |
-| Online Learning | River (MultinomialNB) |
-| LLM | Groq API (free) |
-| Experiment Tracking | MLflow |
-| Drift Detection | Custom pipeline |
-| API | FastAPI |
-| Dashboard | Streamlit |
-| Scheduler | APScheduler |
-| Containerization | Docker |
-| Deployment | Render.com |
-
----
-
-## Project Structure
-
-```
-careerpulse/
-├── pipeline/
-│   ├── ingestion.py       # Fetches jobs from 4 APIs
-│   ├── preprocessing.py   # Cleans and filters tech jobs
-│   ├── features.py        # TF-IDF and skill feature engineering
-│   └── skills.py          # Master skills list (200+ skills)
-├── model/
-│   ├── online_learner.py  # River incremental learning model
-│   ├── llm_coach.py       # Groq LLM career coaching
-│   └── resume_parser.py   # PDF resume skill extraction
-├── mlops/
-│   ├── tracking.py        # MLflow experiment tracking
-│   └── drift.py           # Data drift detection
-├── serving/
-│   ├── api.py             # FastAPI REST API
-│   └── dashboard.py       # Streamlit dashboard
-├── scheduler/
-│   └── jobs.py            # APScheduler automation
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
-```
-
----
-
-## Dashboard Pages
-
-<!-- Add screenshots for each page -->
-
-### Resume Analyzer
-Upload your PDF resume or enter skills manually. Get real match percentages against live job database plus full AI career analysis.
-<!-- ![Resume Analyzer](demo/resume_analyzer.png) -->
+## Screenshots
 
 ### Job Browser
-Browse all jobs with filters for job type, location search, and skill search. Direct apply links to company career portals.
-<!-- ![Job Browser](demo/job_browser.png) -->
+Filter by type, location (country, city or remote) and skill.
 
-### Cover Letter Generator
-Select any job, enter your skills, get a tailored professional cover letter in seconds. Download as text file.
-<!-- ![Cover Letter](demo/cover_letter.png) -->
+![Job Browser](demo/job_browser.png)
+
+### Cover Letter
+![Cover Letter](demo/cover_letter.png)
 
 ### Interview Prep
-Get 8 likely interview questions (technical, behavioral, system design) with tips on how to answer each one.
-<!-- ![Interview Prep](demo/interview_prep.png) -->
+![Interview Prep](demo/interview_prep.png)
 
----
-
-## System Stats (Live)
-
-The sidebar shows real-time system metrics:
-- Total jobs in database
-- Remote jobs available
-- Most in-demand skill
-- Model accuracy (improves daily)
-- Last data update timestamp
-
----
-
-## MLOps Pipeline
+## How it works
 
 ```
-Daily at 6AM (automated):
-  1. Fetch new jobs from 4 APIs
-  2. Filter and clean data
-  3. Build features
-  4. Retrain online learning model
-  5. Log run to MLflow
-  6. Check for data drift
-  7. Auto-retrain if drift detected
+Job APIs -> ingestion (+dedup) -> preprocessing (clean, keep tech jobs, extract skills)
+         -> SQLite -> features (TF-IDF, skill columns) -> River model + MLflow
+Your skills / resume -> normalize -> match % (code) -> LLM explains the result
 ```
 
----
+## Tech stack
 
-## How to Run Locally
+| Area | Tools |
+|---|---|
+| Language | Python 3.13 |
+| Data | SQLite, SQLAlchemy, pandas, scikit-learn (TF-IDF) |
+| Skill matching | regex rules with context checks, synonym map |
+| Model | River (MultinomialNB, online learning) |
+| Tracking | MLflow (SQLite backend) |
+| LLM | Groq API |
+| Serving | FastAPI, Streamlit |
+| Automation | APScheduler |
+| Quality | pytest (67 tests), GitHub Actions |
 
+## Data sources
+
+RemoteOK, Arbeitnow and Adzuna work. The Muse integration exists in the code but currently returns HTTP 403, so it adds no jobs.
+
+## Setup
+
+**1. Clone and install**
+
+Linux / macOS:
 ```bash
-# Clone repo
 git clone https://github.com/amit-0333/careerpulse.git
 cd careerpulse
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-# Create virtual environment
+Windows (PowerShell):
+```powershell
+git clone https://github.com/amit-0333/careerpulse.git
+cd careerpulse
 python -m venv venv
 venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
+```
 
-# Add API keys to .env file
-# GROQ_API_KEY=your_key
-# MUSE_API_KEY=your_key
+**2. Add keys** in a `.env` file in the project root:
+```
+GROQ_API_KEY=your_key
+ADZUNA_APP_ID=your_id
+ADZUNA_APP_KEY=your_key
+```
+Without `GROQ_API_KEY` the AI features (analysis, cover letter, interview prep) will not work. Without Adzuna keys that source is skipped.
 
-# Run data pipeline
+**3. Build the data** (same on every OS):
+```bash
 python -m pipeline.ingestion
 python -m pipeline.preprocessing
 python -m pipeline.features
 python -m model.online_learner
-
-# Start API (Terminal 1)
-python -m serving.api
-
-# Start Dashboard (Terminal 2)
-python -m streamlit run serving/dashboard.py
 ```
 
-Open http://localhost:8501 in browser.
+**4. Run** (two terminals, venv active in both):
+```bash
+python -m serving.api
+python -m streamlit run serving/dashboard.py
+```
+Open http://localhost:8501. API docs: http://localhost:8000/docs
 
----
+**5. Tests**
+```bash
+python -m pytest -q
+```
 
-## API Endpoints
+## API endpoints
 
 | Method | Endpoint | Description |
-|--------|---------|-------------|
-| GET | / | API info |
-| GET | /health | Health check |
-| GET | /stats | Database stats |
-| GET | /jobs | Browse jobs |
-| POST | /analyze | Analyze skills against jobs |
-| POST | /upload-resume | Upload PDF and analyze |
-| POST | /cover-letter | Generate cover letter |
-| POST | /interview-prep | Get interview questions |
+|---|---|---|
+| GET | `/health` | Health check |
+| GET | `/stats` | Database stats |
+| GET | `/jobs` | Browse jobs (`limit`, `source`, `location`, `include_remote`) |
+| POST | `/analyze` | Match skills against jobs |
+| POST | `/upload-resume` | Upload a PDF and analyze |
+| POST | `/cover-letter` | Generate a cover letter |
+| POST | `/interview-prep` | Get interview questions |
 
-API Docs: http://localhost:8000/docs
+## Project structure
 
----
+```
+careerpulse/
+├── pipeline/   ingestion, dedup, dedup_cleanup, preprocessing, features,
+│               skills, skill_extractor, skill_matching, location
+├── model/      online_learner, llm_coach, resume_parser
+├── mlops/      tracking, drift, evaluation
+├── serving/    api, dashboard
+├── scheduler/  jobs
+├── tests/      pytest suite
+├── demo/       screenshots
+└── .github/workflows/tests.yml
+```
+
+## Model evaluation (honest numbers)
+
+The River model predicts a job's category (software engineering, data science, ...).
+
+- On held-out jobs it scored about **60% accuracy against a 47.5% majority-class baseline** (789 jobs, 5 random splits, 13 Oct 2026).
+- Small classes are weak: `qa_testing` had 0% recall.
+- With the job title hidden, it only slightly beats the baseline.
+- Category labels come from title keywords, so a plain rule does this task better. The model is here to show online learning, MLflow tracking and retraining, **not** as a production classifier.
+
+Reproduce: `python -m mlops.evaluation`
 
 ## Demo
 
-<!-- Add your demo video/GIF here -->
-<!-- ![Demo GIF](demo/careerpulse_demo.gif) -->
-<!-- [Watch Full Demo Video](demo/careerpulse_demo.mp4) -->
+<!-- Add a GIF: ![Demo](demo/careerpulse_demo.gif) -->
+*Demo GIF coming soon.*
 
----
+## Limitations and future work
 
-## Live Deployment
-
-- API: Coming soon
-- Dashboard: Coming soon 
-
----
+- **Not deployed.** It runs locally. Docker files exist but have not been tested.
+- **Scheduler** runs only while its process is running (full pipeline daily, ingestion every 6 hours).
+- **Drift detection** is basic: it can flag "volume drift" just because new jobs were added. A statistical test (PSI / chi-square) is planned.
+- **Skills** come from a fixed list of 213. Skills outside it are not detected.
+- **Required vs nice-to-have** is only detected when the posting uses clear wording; otherwise every skill counts as required.
+- **Location filter** uses a built-in list of countries and cities. Unknown places match only by exact text. Jobs with no location never match a place search.
+- **Data:** about 4% of descriptions had broken characters from a source encoding issue. Non-tech jobs may be re-added by ingestion and removed again by preprocessing.
+- **The Muse** source is disabled (HTTP 403).
+- **90-day roadmap** is free text from the LLM, so formatting can be uneven.
+- Planned: structured roadmap output, drift tests, Docker deployment with persistent storage.
 
 ## Author
 
-**Amit Kumar**
-- GitHub: [@amit-0333](https://github.com/amit-0333)
-
----
+**Amit Kumar** - [@amit-0333](https://github.com/amit-0333)
 
 ## License
 
-MIT License
+MIT
