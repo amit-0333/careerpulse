@@ -10,7 +10,7 @@ load_dotenv()
 
 ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY")
-MUSE_API_KEY = os.getenv("MUSE_API_KEY")
+#MUSE_API_KEY = os.getenv("MUSE_API_KEY")
 
 Base = declarative_base()
 engine = create_engine("sqlite:///data/database/careerpulse.db")
@@ -149,7 +149,7 @@ def fetch_themuse():
     jobs = []
     for page in range(1, 6):
         try:
-            url = f"https://www.themuse.com/api/public/jobs?api_key={MUSE_API_KEY}&page={page}"
+            url = f"https://www.themuse.com/api/public/jobs?page={page}"
             response = requests.get(url)
             if response.status_code != 200:
                 print(f"[WARNING] The Muse page {page} failed: {response.status_code}")
