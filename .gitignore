@@ -34,3 +34,6 @@ data/last_updated.txt
 # Windows
 Thumbs.db
 desktop.ini
+
+data/database/*.db
+.pytest_cache/
