@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from pipeline.ingestion import Job, engine
 import pickle
 from pipeline.location import location_matches
+import json
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
@@ -42,11 +43,12 @@ def get_sidebar_stats():
                             skill_counts[skill] = skill_counts.get(skill, 0) + 1
             top_skill = max(skill_counts, key=skill_counts.get) if skill_counts else "python"
             try:
-                with open("data/feature_store/model_metrics.pkl", "rb") as f:
-                    metrics = pickle.load(f)
-                accuracy = round(metrics.get("accuracy", 0) * 100, 1)
-            except:
-                accuracy = 0
+                with open("data/feature_store/model_eval.json") as f:
+                    ev = json.load(f)[0]
+                accuracy = round(ev["accuracy"] * 100, 1)
+                baseline = round(ev["baseline_accuracy"] * 100, 1)
+            except Exception:
+                accuracy, baseline = None, None
             try:
                 with open("data/last_updated.txt", "r") as f:
                     last_trained = f.read().strip()[:10]
@@ -57,6 +59,7 @@ def get_sidebar_stats():
                 "remote": remote,
                 "top_skill": top_skill,
                 "accuracy": accuracy,
+                "baseline": baseline,
                 "last_trained": last_trained,
             }
     except:
@@ -70,7 +73,14 @@ with st.sidebar:
         st.metric("Total Jobs", stats["total"])
         st.metric("Remote Jobs", stats["remote"])
         st.metric("Top Skill", stats["top_skill"].title())
-        st.metric("Model Accuracy", f"{stats['accuracy']}%")
+        if stats["accuracy"] is None:
+            st.metric("Model Accuracy", "not evaluated")
+        else:
+            st.metric(
+                "Model Accuracy (test)",
+                f"{stats['accuracy']}%",
+                delta=f"{stats['accuracy'] - stats['baseline']:+.1f} pts vs baseline",
+            )
         st.metric("Last Updated", stats["last_trained"])
     else:
         st.caption("[WARNING] Stats unavailable")
